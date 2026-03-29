@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Institute {
+  id              String   @id @default(uuid())
+  name            String
+  industry        String?
+  timezone        String   @default("Asia/Kolkata")
+  aiSystemPrompt  String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           User[]
+  courses         Course[]
+  students        Student[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  instituteId   String
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("ADMIN")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  institute     Institute @relation(fields: [instituteId], references: [id])
+}
+
+model Course {
+  id            String    @id @default(uuid())
+  instituteId   String
+  name          String
+  description   String?
+  fees          Float
+  duration      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  institute     Institute @relation(fields: [instituteId], references: [id])
+  bookings      DemoBooking[]
+}
+
+model Student {
+  id            String    @id @default(uuid())
+  instituteId   String
+  phone         String
+  name          String?
+  status        String    @default("COLD") // COLD, WARM, BOOKED, ENROLLED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  institute     Institute @relation(fields: [instituteId], references: [id])
+  messages      Message[]
+  bookings      DemoBooking[]
+
+  @@unique([instituteId, phone])
+}
+
+model Message {
+  id            String    @id @default(uuid())
+  studentId     String
+  sender        String    // USER, AI, AGENT
+  content       String    @db.Text
+  timestamp     DateTime  @default(now())
+
+  student       Student   @relation(fields: [studentId], references: [id])
+}
+
+model DemoBooking {
+  id            String    @id @default(uuid())
+  studentId     String
+  courseId      String
+  scheduledAt   DateTime
+  status        String    @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  createdAt     DateTime  @default(now())
+
+  student       Student   @relation(fields: [studentId], references: [id])
+  course        Course    @relation(fields: [courseId], references: [id])
+}

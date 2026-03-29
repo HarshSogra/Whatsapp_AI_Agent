@@ -1,0 +1,17 @@
+PORT=8000
+
+
+
+DATABASE_URL="postgresql://postgres.vplwbrclsazhsnctiatc:9414085848ha@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
+DIRECT_URL="postgresql://postgres:9414085848ha@db.vplwbrclsazhsnctiatc.supabase.co:5432/postgres"
+
+# Authentication
+JWT_SECRET="supersecretjwtkey_replace_in_production"
+
+# AI Integration
+OPENAI_API_KEY="your_openai_key_here"
+
+# WhatsApp Cloud API
+WHATSAPP_WEBHOOK_VERIFY_TOKEN="your_custom_verify_token"
+WHATSAPP_API_TOKEN="your_whatsapp_cloud_api_token"
+WHATSAPP_PHONE_NUMBER_ID="your_phone_number_id"
