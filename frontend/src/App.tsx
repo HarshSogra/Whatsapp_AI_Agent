@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { MessageSquare, Users, BookOpen, Settings, LayoutDashboard, LogOut } from 'lucide-react';
 
