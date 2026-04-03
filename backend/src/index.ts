@@ -1,14 +1,12 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import webhookRoutes from './routes/webhook.routes';
 import apiRoutes from './routes/api.routes';
 import { initCronJobs } from './services/cron.service';
-
-dotenv.config();
 
 const app = express();
 export const prisma = new PrismaClient();
@@ -36,6 +34,7 @@ app.get('/health', async (req, res) => {
     res.status(500).json({ status: 'error', database: 'disconnected' });
   }
 });
+
 
 // Startup Server
 if (process.env.NODE_ENV !== 'test') {
