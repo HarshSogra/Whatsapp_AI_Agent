@@ -16,11 +16,8 @@
 ## 🚀 Setup Instructions
 
 ### 1. Database Setup
-We recommend running PostgreSQL via Docker.
-Navigate to the root directory and start the database:
-```bash
-docker-compose up -d db
-```
+Spin up a managed PostgreSQL database on Render or Supabase. Alternatively, install PostgreSQL natively on your local machine.
+Once you have your PostgreSQL connection string (URL), proceed to the next step.
 
 ### 2. Backend Configuration
 1. Open `backend/.env` and supply your actual API Keys:
@@ -74,12 +71,13 @@ Use the Ngrok generated URL + `/webhook` (e.g., `https://e847-123.ngrok-free.app
    - Set Build Command: `npm run build`
    - Set Output Directory: `dist`
 
-### Option 2: VPS (DigitalOcean/AWS EC2)
-1. Install Docker and Nginx.
+### VPS (DigitalOcean/AWS EC2)
+1. Install Node.js, PostgreSQL, and Nginx.
 2. Clone the directory to your VPS.
-3. Overwrite `.env` variables cleanly in your server environment.
-4. Run `docker-compose up -d --build`.
-5. Use Nginx as a reverse proxy to route traffic to `:8000` (Backend Webhooks) and serve Frontend static files. Assign an SSL via Certbot.
+3. Configure your `.env` variables.
+4. Run Database Migrations: `npx prisma db push`
+5. Start the production server: `npm start`
+6. Use Nginx as a reverse proxy to route traffic to `:8000` (Backend Webhooks) and serve Frontend static files. Assign an SSL via Certbot.
 
 ---
 
