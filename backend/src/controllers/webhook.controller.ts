@@ -28,7 +28,8 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
     console.log('--- Incoming Webhook Event ---');
     console.log('Full Payload:', JSON.stringify(body, null, 2));
 
-    if (body.object === 'whatsapp') {
+    if (body.object === 'whatsapp_business_account') {
+      console.log("Valid WhatsApp event received ✅");
       const entry = body.entry?.[0];
       const change = entry?.changes?.[0];
       const message = change?.value?.messages?.[0];
