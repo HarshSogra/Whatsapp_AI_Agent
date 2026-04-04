@@ -23,18 +23,23 @@ export const verifyWebhook = (req: Request, res: Response) => {
 export const handleIncomingMessage = async (req: Request, res: Response) => {
   try {
     const body = req.body;
-    if (body.object) {
-      if (
-        body.entry &&
-        body.entry[0].changes &&
-        body.entry[0].changes[0] &&
-        body.entry[0].changes[0].value.messages &&
-        body.entry[0].changes[0].value.messages[0]
-      ) {
-        const from = body.entry[0].changes[0].value.messages[0].from; 
-        const msg_body = body.entry[0].changes[0].value.messages[0].text.body;
 
-        // Retrieve dynamic context (Dummy values for MVP initialization step)
+    // 1. Detailed Logging of the Incoming payload
+    console.log('--- Incoming Webhook Event ---');
+    console.log('Full Payload:', JSON.stringify(body, null, 2));
+
+    if (body.object === 'whatsapp') {
+      const entry = body.entry?.[0];
+      const change = entry?.changes?.[0];
+      const message = change?.value?.messages?.[0];
+
+      if (message) {
+        const from = message.from; 
+        const msg_body = message.text?.body;
+
+        console.log(`Message Details -> Sender: ${from}, Content: "${msg_body}"`);
+
+        // Context for the AI
         const mockContext = {
           name: "Bright Futures Coaching",
           courses: [
@@ -43,20 +48,37 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
           ]
         };
 
-        // Get AI Response
-        const aiResponse = await generateAIResponse(msg_body, mockContext);
-
-        // Send Reply
-        if (aiResponse) {
-           await sendWhatsAppMessage(from, aiResponse);
+        // 2. AI Response Generation
+        let aiResponse = "";
+        try {
+          console.log("Generating AI response...");
+          aiResponse = await generateAIResponse(msg_body, mockContext) || "";
+          console.log(`AI Success -> Response: "${aiResponse}"`);
+        } catch (aiError) {
+          console.error("AI Generation ERROR:", aiError);
+          aiResponse = "I'm having a brief issue processing that. Please try again in 30 seconds.";
         }
+
+        // 3. Sending the WhatsApp Reply
+        if (aiResponse) {
+          try {
+            console.log(`Sending WhatsApp message to ${from}...`);
+            await sendWhatsAppMessage(from, aiResponse);
+            console.log("WhatsApp Send SUCCESS");
+          } catch (whatsappError) {
+            console.error("WhatsApp API ERROR:", whatsappError);
+          }
+        }
+      } else {
+        console.log("Payload ignored: No message object found (this might be a delivery status update).");
       }
-      res.sendStatus(200);
+      return res.sendStatus(200);
     } else {
-      res.sendStatus(404);
+      console.log("Payload rejected: Not a 'whatsapp' object.");
+      return res.sendStatus(404);
     }
   } catch (error) {
-    console.error('Webhook Error:', error);
-    res.sendStatus(500);
+    console.error('CRITICAL Webhook Handler Error:', error);
+    return res.sendStatus(500);
   }
 };
