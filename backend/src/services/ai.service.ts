@@ -1,17 +1,17 @@
-import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 
-let openai: OpenAI | null = null;
+let groq: Groq | null = null;
 
-const getOpenAI = () => {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set in environment variables');
+const getGroq = () => {
+  if (!groq) {
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is not set in environment variables');
     }
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+    groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
     });
   }
-  return openai;
+  return groq;
 };
 
 export const generateAIResponse = async (userMessage: string, context: any) => {
@@ -28,8 +28,8 @@ Rules:
   `;
 
   try {
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o-mini',
+    const completion = await getGroq().chat.completions.create({
+      model: 'llama3-8b-8192',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
@@ -37,7 +37,7 @@ Rules:
       temperature: 0.3,
     });
 
-    return completion.choices[0].message.content;
+    return completion.choices[0].message?.content || "";
   } catch (error) {
     console.error('Error generating AI response:', error);
     return "I'm having trouble processing your request right now. Please try again later.";
