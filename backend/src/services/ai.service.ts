@@ -15,7 +15,7 @@ const getGroq = () => {
 };
 
 export const generateAIResponse = async (userMessage: string, context: any) => {
-  const systemPrompt = `
+  const defaultSystemPrompt = `
 You are a helpful AI assistant for a Coaching Institute. 
 Answer student queries using the following context about the institute:
 Name: ${context.name}
@@ -26,6 +26,8 @@ Rules:
 2. Be polite, engaging, and concise. Short answers work best on WhatsApp.
 3. If unsure, tell the user you will connect them to a human agent and request them to wait.
   `;
+
+  const systemPrompt = context.systemPrompt || defaultSystemPrompt;
 
   try {
     const completion = await getGroq().chat.completions.create({

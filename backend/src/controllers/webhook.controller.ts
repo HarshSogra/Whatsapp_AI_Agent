@@ -32,28 +32,42 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
       console.log("Valid WhatsApp event received ✅");
       const entry = body.entry?.[0];
       const change = entry?.changes?.[0];
-      const message = change?.value?.messages?.[0];
+      const value = change?.value;
+      const metadata = value?.metadata;
+      const message = value?.messages?.[0];
 
-      if (message) {
+      if (message && metadata?.phone_number_id) {
         const from = message.from; 
         const msg_body = message.text?.body;
+        const phoneNumberId = metadata.phone_number_id;
 
-        console.log(`Message Details -> Sender: ${from}, Content: "${msg_body}"`);
+        console.log(`Routing Message -> PhoneID: ${phoneNumberId}, Sender: ${from}, Content: "${msg_body}"`);
 
-        // Context for the AI
-        const mockContext = {
-          name: "Bright Futures Coaching",
-          courses: [
-             { name: "JEE Mains Foundation", fees: "50,000 INR" }, 
-             { name: "NEET Crash Course", fees: "60,000 INR" }
-          ]
+        // Resolve Institute from database
+        const institute = await prisma.institute.findUnique({
+          where: { whatsappPhoneNumberId: phoneNumberId },
+          include: { courses: true }
+        });
+
+        if (!institute) {
+          console.error(`ERROR: No institute found for WhatsApp Phone ID: ${phoneNumberId}`);
+          return res.sendStatus(200); // Still return 200 to Meta to avoid retries
+        }
+
+        console.log(`Institute Resolved: ${institute.name}`);
+
+        // Prepare context for AI
+        const context = {
+          name: institute.name,
+          courses: institute.courses.map(c => ({ name: c.name, fees: c.fees })),
+          systemPrompt: institute.aiSystemPrompt
         };
 
         // 2. AI Response Generation
         let aiResponse = "";
         try {
-          console.log("Generating AI response...");
-          aiResponse = await generateAIResponse(msg_body, mockContext) || "";
+          console.log(`Generating AI response for ${institute.name}...`);
+          aiResponse = await generateAIResponse(msg_body, context) || "";
           console.log(`AI Success -> Response: "${aiResponse}"`);
         } catch (aiError) {
           console.error("AI Generation ERROR:", aiError);
@@ -71,11 +85,11 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
           }
         }
       } else {
-        console.log("Payload ignored: No message object found (this might be a delivery status update).");
+        console.log("Payload ignored: Missing message or metadata.");
       }
       return res.sendStatus(200);
     } else {
-      console.log("Payload rejected: Not a 'whatsapp' object.");
+      console.log("Payload rejected: Not a 'whatsapp_business_account' object.");
       return res.sendStatus(404);
     }
   } catch (error) {
