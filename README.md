@@ -1,89 +1,96 @@
-# WhatsApp AI Agent SaaS - Setup & Deployment Guide
+# EduAgent AI: WhatsApp Lead Automation SaaS
 
-## 🏗️ Architecture Summary
+EduAgent AI is a powerful WhatsApp-based AI assistant designed for Coaching Institutes to capture, qualify, and convert leads automatically. It bridges the gap between AI automation and human connection.
 
-**Frontend Dashboard**: Built with React (Vite) and TailwindCSS. It serves as the Hub for Institute Admins to view incoming leads via WhatsApp, check demo bookings, and observe the AI conversation history natively.
+## 🚀 Core Features
 
-**Backend API**: Built with Node.js, Express, and TypeScript.
-- Exposes `GET/POST /webhook` for real-time Meta WhatsApp Cloud API webhooks.
-- Orchestrates conversational memory.
-- Uses **OpenAI gpt-4o-mini** to answer student queries automatically, injecting pricing and course details directly from the Institute database context.
+### 1. 🧠 Smart Lead Capture & Scoring
+Not all messages are equal. EduAgent uses a dual-layer intent detection system:
+- **Keyword Matching**: Fast detection of common queries like "fees", "demo", or "admission".
+- **AI Classification (Groq + Llama-3)**: For nuanced messages, the AI classifies intent to distinguish between high-intent leads and general enquiries.
+- **Lead Status**: Automatically tags students as `HOT`, `WARM`, or `COLD` based on their interactions.
 
-**Database Layer**: PostgreSQL via Prisma ORM storing Users, Institutes, Courses, Students (Leads), DemoBookings, and Messages.
+### 2. 🤝 Human Connect (The "m=feature")
+The agent knows when to step aside. When a student expresses a strong desire to talk to a human or asks for contact details:
+- **Instant Redirection**: Provides the institute's direct phone number.
+- **WhatsApp Direct Link**: Generates a `wa.me` link so the student can start a chat with a human agent in one tap.
+- **Intelligent Handoff**: Marks the lead as `HOT` and stops automated AI responses if a closing flow is triggered.
+
+### 3. 📢 Admin Instant Alerts
+Never miss a high-value lead.
+- **Real-time Notifications**: Sends a WhatsApp alert directly to the Institute Admin's phone as soon as a `HOT` lead or "Human Connect" request is detected.
+- **Enquiry Context**: Alerts include the student's phone number and the specific message that triggered the alert.
+
+### 4. ⏰ Automated Drip Follow-ups (Cron)
+Keeps the conversation alive without manual effort.
+- **2-Hour Nudge**: If a student drops off after showing high intent, the AI sends a gentle nudge to re-engage.
+- **24-Hour Closer**: A final follow-up sent after a day, highlighting seat availability or demo bookings.
+- **Safety Guards**: Follow-ups automatically stop if the student replies or shows negative intent.
+
+### 5. 📊 Real-time CRM Dashboard
+A sleek interface for Institute Admins to:
+- Monitor conversation volume and lead conversion rates.
+- View detailed profiles for every student lead.
+- Check AI conversation history in real-time.
 
 ---
 
-## 🚀 Setup Instructions
+## 🏗️ Architecture & Stack
+
+- **Backend**: Node.js (Express + TypeScript)
+- **Database**: PostgreSQL (Prisma ORM)
+- **AI Engine**: Groq SDK (Llama 3.1 8B Instant)
+- **WhatsApp Engine**: Meta WhatsApp Cloud API
+- **Frontend**: React (Vite) + TailwindCSS + Lucide Icons
+- **Schedulers**: Node-cron for automated follow-ups
+
+---
+
+## 🛠️ Setup & Deployment
 
 ### 1. Database Setup
-Spin up a managed PostgreSQL database on Render or Supabase. Alternatively, install PostgreSQL natively on your local machine.
-Once you have your PostgreSQL connection string (URL), proceed to the next step.
+- Provision a PostgreSQL instance (Render/Supabase).
+- Set your `DATABASE_URL` and `DIRECT_URL` in `backend/.env`.
 
-### 2. Backend Configuration
-1. Open `backend/.env` and supply your actual API Keys:
-   - `OPENAI_API_KEY`
-   - `WHATSAPP_API_TOKEN`
-   - `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
-2. Run Database Migrations:
-```bash
-cd backend
-npm install
-npx prisma generate
-npx prisma db push
-```
-3. Start the Node API Server:
-```bash
-npm run dev
-```
-*(Server runs on `http://localhost:8000`)*
+### 2. Configuration
+1. **Backend**:
+   ```bash
+   cd backend
+   npm install
+   npx prisma db push
+   npm run dev
+   ```
+2. **Frontend**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-### 3. Frontend Configuration
-1. Open a new terminal in the `frontend` directory:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-*(Dashboard runs on `http://localhost:5173`)*
+### 3. Environment Variables
+Ensure the following are set in `backend/.env`:
+- `GROQ_API_KEY`: Your Groq API key for Llama-3.
+- `WHATSAPP_API_TOKEN`: Meta WhatsApp Cloud API token.
+- `WHATSAPP_PHONE_NUMBER_ID`: Your WhatsApp Business Phone ID.
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: For Meta webhook verification.
 
 ---
 
-## 🌍 Connecting WhatsApp Cloud API
-To test incoming WhatsApp messages locally, use **ngrok** to tunnel your backend port:
-```bash
-ngrok http 8000
-```
-Use the Ngrok generated URL + `/webhook` (e.g., `https://e847-123.ngrok-free.app/webhook`) in your Meta Developer Portal Webhook configuration. The Verify Token should be matched precisely with `WHATSAPP_WEBHOOK_VERIFY_TOKEN` in your `.env`.
+## 📦 Deployment
+
+### Backend (Render/Railway)
+- Enable `/backend` as a Web Service.
+- Build: `npm install && npx prisma generate && npm run build`
+- Start: `npm start`
+
+### Frontend (Static Hosting)
+- Build: `npm run build`
+- Output: `dist`
 
 ---
 
-## 📦 Deployment Guide
+## 🔮 Roadmap
+- **Stripe Integration**: Generate payment links for course fees directly in WhatsApp.
+- **Multi-Tenancy**: Support for multiple institutes under a single SaaS umbrella.
+- **Broadcast Campaigns**: Bulk WhatsApp templates for 'COLD' lead re-activation.
 
-### Option 1: Render / Railway (Easiest)
-1. **Database**: Spin up a managed PostgreSQL database on Render or Supabase.
-2. **Backend**:
-   - Create a Web Service linked to the `/backend` folder.
-   - Set Build Command: `npm install && npx prisma generate && npm run build`
-   - Set Start Command: `npm start`
-   - Add all environment variables (including `DATABASE_URL`).
-3. **Frontend**:
-   - Create a Static Site linked to the `/frontend` folder.
-   - Set Build Command: `npm run build`
-   - Set Output Directory: `dist`
-
-### VPS (DigitalOcean/AWS EC2)
-1. Install Node.js, PostgreSQL, and Nginx.
-2. Clone the directory to your VPS.
-3. Configure your `.env` variables.
-4. Run Database Migrations: `npx prisma db push`
-5. Start the production server: `npm start`
-6. Use Nginx as a reverse proxy to route traffic to `:8000` (Backend Webhooks) and serve Frontend static files. Assign an SSL via Certbot.
-
----
-
-## 🔮 Future Improvements
-
-1. **Stripe Integration**: Allow instantaneous fee payment links generated by the AI agent through WhatsApp.
-2. **Conversation Summarizer**: Add a CRON job to summarize extremely long student WhatsApp chats and push a "Lead Quality Score" into the CRM dashboard.
-3. **Multi-Tenancy Super Admin Panel**: A dashboard specifically for YOU (the SaaS founder) to manage multiple Coaching Institutes subscribing to your software.
-4. **Broadcast feature**: Enable the Institute to bulk broadcast WhatsApp templates to all `COLD` leads directly from the React CRM views.
