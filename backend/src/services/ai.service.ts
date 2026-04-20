@@ -14,7 +14,7 @@ const getGroq = () => {
   return groq;
 };
 
-export const generateAIResponse = async (userMessage: string, context: any) => {
+export const generateAIResponse = async (userMessage: string, history: any[], context: any) => {
   const defaultSystemPrompt = `
 You are a helpful AI assistant for a Coaching Institute. 
 Answer student queries using the following context about the institute:
@@ -29,13 +29,20 @@ Rules:
 
   const systemPrompt = context.systemPrompt || defaultSystemPrompt;
 
+  // Format history and current message for chat API
+  const messages: any[] = [
+    { role: 'system', content: systemPrompt },
+    ...history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.content
+    })),
+    { role: 'user', content: userMessage }
+  ];
+
   try {
     const completion = await getGroq().chat.completions.create({
       model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ],
+      messages: messages,
       temperature: 0.3,
     });
 
@@ -43,5 +50,32 @@ Rules:
   } catch (error) {
     console.error('Error generating AI response:', error);
     return "I'm having trouble processing your request right now. Please try again later.";
+  }
+};
+
+/**
+ * Classifies if a message shows high intent to enroll or inquire about courses.
+ * Simple YES/NO classification to keep it fast.
+ */
+export const classifyIntentAI = async (message: string): Promise<boolean> => {
+  try {
+    const response = await getGroq().chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Classify if the student message shows high intent (e.g., asking about joining, fees, demos, or center visits). Reply with ONLY "YES" or "NO".' 
+        },
+        { role: 'user', content: message }
+      ],
+      temperature: 0,
+      max_tokens: 5,
+    });
+
+    const result = response.choices[0].message?.content?.trim().toUpperCase();
+    return result === 'YES';
+  } catch (error) {
+    console.error('Error in classifyIntentAI:', error);
+    return false; // Default to false to avoid spamming admin on error
   }
 };
