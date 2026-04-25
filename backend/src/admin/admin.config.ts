@@ -1,18 +1,25 @@
 import { prisma } from '../prisma';
 
 export const buildAdminRouter = async () => {
-    // Force a clean ESM import for all AdminJS components
-    const adminPkg = await (new Function('return import("adminjs")')());
-    const prismaPkg = await (new Function('return import("@adminjs/prisma")')());
-    const expressPkg = await (new Function('return import("@adminjs/express")')());
+    console.log("Loading AdminJS modules...");
+    const adminModule = await (new Function('return import("adminjs")')());
+    const prismaModule = await (new Function('return import("@adminjs/prisma")')());
+    const expressModule = await (new Function('return import("@adminjs/express")')());
 
-    // Resolve the actual classes from the packages (handling ESM 'default' vs named)
-    const AdminJS = adminPkg.default || adminPkg;
-    const { Database, Resource } = prismaPkg;
-    const AdminJSExpress = expressPkg.default || expressPkg;
+    // Resolve the actual classes
+    const AdminJS = adminModule.AdminJS || adminModule.default;
+    const { Database, Resource } = prismaModule;
+    const AdminJSExpress = expressModule.default || expressModule;
 
-    // Register the adapter explicitly on this specific AdminJS instance
-    AdminJS.registerAdapter({ Database, Resource });
+    console.log(`AdminJS Class: ${AdminJS ? 'FOUND' : 'MISSING'}`);
+    console.log(`Prisma Adapter Database: ${Database ? 'FOUND' : 'MISSING'}`);
+    console.log(`Prisma Adapter Resource: ${Resource ? 'FOUND' : 'MISSING'}`);
+
+    // Register the adapter
+    if (AdminJS && Database && Resource) {
+        AdminJS.registerAdapter({ Database, Resource });
+        console.log("AdminJS Adapter Registered ✅");
+    }
 
     const adminOptions = {
         resources: [
@@ -43,6 +50,8 @@ export const buildAdminRouter = async () => {
         },
         rootPath: '/admin',
     };
+
+    if (!AdminJS) throw new Error("AdminJS class could not be loaded.");
 
     const admin = new AdminJS(adminOptions);
     const buildRouter = AdminJSExpress.buildRouter;
