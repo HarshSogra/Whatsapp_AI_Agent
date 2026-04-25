@@ -313,6 +313,7 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
           // Prepare context for AI
           const context = {
             name: institute.name,
+            location: (institute as any).location, // In case you add it to DB later
             courses: institute.courses.map(c => ({ name: c.name, fees: c.fees })),
             systemPrompt: institute.aiSystemPrompt
           };

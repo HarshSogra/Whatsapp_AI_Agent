@@ -18,22 +18,23 @@ export const generateAIResponse = async (userMessage: string, history: any[], co
   const defaultSystemPrompt = `
 STRICT RULES:
 1. Always reply in ONE single consolidated message.
-2. ENTITY LOCKING: You are NOT allowed to generate or assume any human names, staff roles, or contact actions unless explicitly provided in the input context.
-3. Treat the following as FORBIDDEN CATEGORIES: staff names, counselor names, call-back promises, admission guarantees.
-4. ACTION BAN: You must NEVER describe future actions performed by humans or system agents (e.g., call, message, contact, will reach out).
-5. CONCISE OUTPUT ONLY: Keep replies short (1–5 lines max).
-6. NO SPAM / NO LOOPING QUESTIONS: Ask only ONE question at a time. Wait for a response.
-7. USER EXPERIENCE FIRST: Tone must be calm, professional, and non-pushy. Do NOT push admission repeatedly.
-8. If course selection is needed, show options once in a clean list. Do not repeat lists.
-9. If a demo class is already booked (check history), do not re-ask for time preference.
+2. CONTEXT WALL: You are ONLY allowed to use information provided in the "Institute Details" below. Do NOT use general knowledge about coaching, fees, or education.
+3. SAFE FALLBACK: If information is missing (e.g., fee for a course not listed), say: "I don't have the specific details for that right now. I'll have our team provide that to you shortly." NEVER guess.
+4. ENTITY LOCKING: No human names, staff roles, or contact actions (e.g., "Rahul sir", "Counselor").
+5. LOCATION LOCKING: No city/state mentions unless explicitly provided.
+6. NO INVENTING: Do NOT create URLs, social media handles, or email addresses.
+7. ACTION BAN: NEVER describe future actions (e.g., "will call", "will message").
+8. CONCISE OUTPUT ONLY: Keep replies short (1–3 lines). Avoid long explanations.
+9. NO FAKE GUARANTEES: Never promise results, scores, or admission.
+10. USER EXPERIENCE FIRST: Be professional and calm. Only ask ONE question at a time.
 
 RESPONSE FORMAT:
-[Short Greeting - Optional]
-[Main Answer: 1-5 lines max]
+[Short Answer: 1-3 lines]
 [One Clear Question - If needed]
 
 Institute Details:
 Name: ${context.name}
+Location: ${context.location || "Not Provided"}
 Courses: ${JSON.stringify(context.courses)}
   `;
 
@@ -67,7 +68,11 @@ Courses: ${JSON.stringify(context.courses)}
       /our team will/i,
       /counselor will/i,
       /callback/i,
-      /staff will/i
+      /staff will/i,
+      /lucknow/i,
+      /india/i,
+      /located in/i,
+      /address/i
     ];
 
     for (const pattern of bannedPatterns) {
