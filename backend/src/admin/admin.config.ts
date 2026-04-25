@@ -1,15 +1,19 @@
 import { prisma } from '../prisma';
 
 export const buildAdminRouter = async () => {
-    // 1. Load all AdminJS components using dynamic imports to ensure they share the same ESM environment
-    const { default: AdminJS } = await (new Function('return import("adminjs")')());
-    const { Database, Resource } = await (new Function('return import("@adminjs/prisma")')());
-    const AdminJSExpress = await (new Function('return import("@adminjs/express")')());
+    // Force a clean ESM import for all AdminJS components
+    const adminPkg = await (new Function('return import("adminjs")')());
+    const prismaPkg = await (new Function('return import("@adminjs/prisma")')());
+    const expressPkg = await (new Function('return import("@adminjs/express")')());
 
-    // 2. Register the adapter
+    // Resolve the actual classes from the packages (handling ESM 'default' vs named)
+    const AdminJS = adminPkg.default || adminPkg;
+    const { Database, Resource } = prismaPkg;
+    const AdminJSExpress = expressPkg.default || expressPkg;
+
+    // Register the adapter explicitly on this specific AdminJS instance
     AdminJS.registerAdapter({ Database, Resource });
 
-    // 3. Define options inside the builder
     const adminOptions = {
         resources: [
             {
@@ -41,7 +45,7 @@ export const buildAdminRouter = async () => {
     };
 
     const admin = new AdminJS(adminOptions);
-    const buildRouter = AdminJSExpress.default ? AdminJSExpress.default.buildRouter : AdminJSExpress.buildRouter;
+    const buildRouter = AdminJSExpress.buildRouter;
 
     return buildRouter(admin);
 };
