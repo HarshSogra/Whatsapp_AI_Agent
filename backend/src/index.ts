@@ -10,8 +10,8 @@ import { initCronJobs } from './services/cron.service';
 
 import { buildAdminRouter } from './admin/admin.config';
 
-// Setup
 const app = express();
+export const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8000;
 
 // Middleware
@@ -23,8 +23,8 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 async function start() {
-  // Mount AdminJS
-  const adminRouter = await buildAdminRouter();
+  // Mount AdminJS - Passing our prisma instance explicitly
+  const adminRouter = await buildAdminRouter(prisma);
   app.use('/admin', adminRouter);
 
   // Routes

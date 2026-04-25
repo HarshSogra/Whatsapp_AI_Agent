@@ -1,7 +1,7 @@
-import { prisma } from '../prisma';
+import { PrismaClient } from '@prisma/client';
 
-export const buildAdminRouter = async () => {
-    // Load components
+export const buildAdminRouter = async (prisma: PrismaClient) => {
+    // 1. Load dynamic modules
     const adminModule = await (new Function('return import("adminjs")')());
     const prismaModule = await (new Function('return import("@adminjs/prisma")')());
     const expressModule = await (new Function('return import("@adminjs/express")')());
@@ -9,11 +9,11 @@ export const buildAdminRouter = async () => {
     const AdminJS = adminModule.AdminJS || adminModule.default;
     const AdminJSExpress = expressModule.default || expressModule;
 
-    // Register the Prisma Adapter
+    // 2. Register Adapter
     AdminJS.registerAdapter(prismaModule);
 
+    // 3. Setup Options
     const adminOptions = {
-        // Just provide the whole database - AdminJS will auto-discover all tables!
         databases: [prisma],
         branding: {
             companyName: 'Bright Futures Coaching AI',
