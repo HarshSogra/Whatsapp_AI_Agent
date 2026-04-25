@@ -74,6 +74,7 @@ model Student {
 model Message {
   id          String   @id @default(uuid())
   studentId   String
+  whatsappMessageId String? @unique
   phoneNumber String
   role        String   // "user" or "assistant"
   content     String

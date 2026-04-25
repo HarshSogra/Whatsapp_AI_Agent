@@ -81,7 +81,8 @@ async function getRecentMessages(studentId: string, limit: number = 10) {
 }
 
 // Helper: Save message to DB
-async function saveMessage(studentId: string, phoneNumber: string, role: string, content: string, intent?: string) {
+async function saveMessage(params: { studentId: string, phoneNumber: string, role: string, content: string, intent?: string, whatsappMessageId?: string }) {
+  const { studentId, phoneNumber, role, content, intent, whatsappMessageId } = params;
   try {
     await prisma.message.create({
       data: {
@@ -89,7 +90,8 @@ async function saveMessage(studentId: string, phoneNumber: string, role: string,
         phoneNumber,
         role,
         content,
-        intent
+        intent,
+        whatsappMessageId
       }
     });
 
@@ -221,124 +223,126 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
   try {
     const body = req.body;
 
-    // 1. Detailed Logging of the Incoming payload
-    console.log('--- Incoming Webhook Event ---');
-    console.log('Full Payload:', JSON.stringify(body, null, 2));
-
     if (body.object === 'whatsapp_business_account') {
-      console.log("Valid WhatsApp event received ✅");
       const entry = body.entry?.[0];
       const change = entry?.changes?.[0];
       const value = change?.value;
-      const metadata = value?.metadata;
       const message = value?.messages?.[0];
 
-      if (message && metadata?.phone_number_id) {
-        const from = message.from;
-        const msg_body = message.text?.body;
-        const phoneNumberId = metadata.phone_number_id;
-
-        console.log(`Routing Message -> PhoneID: ${phoneNumberId}, Sender: ${from}, Content: "${msg_body}"`);
-
-        // Resolve Institute from database
-        const institute = await prisma.institute.findUnique({
-          where: { whatsappPhoneNumberId: phoneNumberId },
-          include: { courses: true }
-        });
-
-        if (!institute) {
-          console.error(`ERROR: No institute found for WhatsApp Phone ID: ${phoneNumberId}`);
-          return res.sendStatus(200);
-        }
-
-        console.log(`Institute Resolved: ${institute.name}`);
-
-        // 1.5 Auto-Lead Capture and History Fetching
-        const student = await getOrCreateStudent(institute.id, from);
-        const history = await getRecentMessages(student.id, 10);
-
-        // 1.8 Intent Detection & Admin Alert
-        let finalIntentIsHigh = false;
-        let closingResponse = "";
-        let closingAlertTitle = "";
-
-        if (msg_body) {
-           const keywordIntent = detectIntent(msg_body);
-           console.log(`Keyword Intent Detection: ${keywordIntent}`);
-
-           finalIntentIsHigh = keywordIntent === "HIGH";
-
-           // If Keywords fail, ask AI for "Smart Detection"
-           if (!finalIntentIsHigh) {
-              console.log("Low keyword intent. Asking AI for Smart Classification...");
-              finalIntentIsHigh = await classifyIntentAI(msg_body);
-              console.log(`AI Smart Intent Detection: ${finalIntentIsHigh ? "HIGH" : "LOW"}`);
-           }
-
-           // 1.9 Closing Flow Detection (Deterministic Conversion Logic)
-           const closingResult = await handleClosingFlow(student, msg_body, institute);
-           closingResponse = closingResult.response;
-           closingAlertTitle = closingResult.alertTitle;
-
-           if (finalIntentIsHigh && institute.adminPhoneNumber) {
-             sendAdminAlert({
-               adminPhoneNumber: institute.adminPhoneNumber,
-               studentPhone: from,
-               message: msg_body,
-               title: closingAlertTitle // Pass specific title if Demo/Buy intent found
-             });
-           }
-        }
-
-        // Save incoming user message with detected intent
-        await saveMessage(student.id, from, 'user', msg_body, finalIntentIsHigh ? 'HIGH' : 'LOW');
-
-        // Prepare context for AI
-        const context = {
-          name: institute.name,
-          courses: institute.courses.map(c => ({ name: c.name, fees: c.fees })),
-          systemPrompt: institute.aiSystemPrompt
-        };
-
-        // 2. Response Generation (Closing Flow Override vs AI Fallback)
-        let finalResponse = closingResponse; // Override with Closing Flow if available
-        
-        if (!finalResponse) {
-          try {
-            console.log(`Generating AI response for ${institute.name} with history (${history.length} msgs)...`);
-            finalResponse = await generateAIResponse(msg_body, history, context) || "";
-            console.log(`AI Success -> Response: "${finalResponse}"`);
-          } catch (aiError) {
-            console.error("AI Generation ERROR:", aiError);
-            finalResponse = "I'm having a brief issue processing that. Please try again in 30 seconds.";
-          }
-        } else {
-          console.log(`Closing Flow Triggered -> Response: "${finalResponse}"`);
-        }
-
-        // 3. Sending the WhatsApp Reply
-        if (finalResponse) {
-          try {
-            console.log(`Sending WhatsApp message to ${from}...`);
-            await sendWhatsAppMessage(from, finalResponse);
-            console.log("WhatsApp Send SUCCESS");
-
-            // Save response to DB
-            await saveMessage(student.id, from, 'assistant', finalResponse);
-          } catch (whatsappError) {
-            console.error("WhatsApp API ERROR:", whatsappError);
-          }
-        }
-      } else {
-        console.log("Payload ignored: Missing message or metadata.");
+      // Discard invalid messages or non-text messages early
+      if (!message || !message.text?.body) {
+        return res.sendStatus(200);
       }
-      return res.sendStatus(200);
+
+      // 1. Acknowledge immediately to stop Meta from retrying (which causes multiple bubbles)
+      res.sendStatus(200);
+
+      // 2. Process logic asynchronously
+      (async () => {
+        try {
+          const from = message.from;
+          const msg_body = message.text.body;
+          const msg_id = message.id;
+          const metadata = value.metadata;
+          const phoneNumberId = metadata.phone_number_id;
+
+          // Deduplication Check
+          const existingMessage = await prisma.message.findUnique({
+            where: { whatsappMessageId: msg_id }
+          });
+
+          if (existingMessage) {
+            console.log(`Ignoring duplicate message: ${msg_id}`);
+            return;
+          }
+
+          console.log(`Processing Message -> PhoneID: ${phoneNumberId}, Sender: ${from}, Content: "${msg_body}", ID: ${msg_id}`);
+
+          // Resolve Institute from database
+          const institute = await prisma.institute.findUnique({
+            where: { whatsappPhoneNumberId: phoneNumberId },
+            include: { courses: true }
+          });
+
+          if (!institute) {
+            console.error(`ERROR: No institute found for WhatsApp Phone ID: ${phoneNumberId}`);
+            return;
+          }
+
+          // 1.5 Auto-Lead Capture and History Fetching
+          const student = await getOrCreateStudent(institute.id, from);
+          const history = await getRecentMessages(student.id, 10);
+
+          // 1.8 Intent Detection & Admin Alert
+          let finalIntentIsHigh = false;
+          let closingResponse = "";
+          let closingAlertTitle = "";
+
+          const keywordIntent = detectIntent(msg_body);
+          finalIntentIsHigh = keywordIntent === "HIGH";
+
+          // If Keywords fail, ask AI for "Smart Detection"
+          if (!finalIntentIsHigh) {
+            finalIntentIsHigh = await classifyIntentAI(msg_body);
+          }
+
+          // 1.9 Closing Flow Detection
+          const closingResult = await handleClosingFlow(student, msg_body, institute);
+          closingResponse = closingResult.response;
+          closingAlertTitle = closingResult.alertTitle;
+
+          if (finalIntentIsHigh && institute.adminPhoneNumber) {
+            sendAdminAlert({
+              adminPhoneNumber: institute.adminPhoneNumber,
+              studentPhone: from,
+              message: msg_body,
+              title: closingAlertTitle
+            });
+          }
+
+          // Save incoming user message
+          await saveMessage({ 
+            studentId: student.id, 
+            phoneNumber: from, 
+            role: 'user', 
+            content: msg_body, 
+            intent: finalIntentIsHigh ? 'HIGH' : 'LOW',
+            whatsappMessageId: msg_id
+          });
+
+          // Prepare context for AI
+          const context = {
+            name: institute.name,
+            courses: institute.courses.map(c => ({ name: c.name, fees: c.fees })),
+            systemPrompt: institute.aiSystemPrompt
+          };
+
+          // 2. Response Generation
+          let finalResponse = closingResponse;
+          
+          if (!finalResponse) {
+            finalResponse = await generateAIResponse(msg_body, history, context) || "";
+          }
+
+          // 3. Sending the WhatsApp Reply
+          if (finalResponse) {
+            await sendWhatsAppMessage(from, finalResponse);
+            await saveMessage({ 
+              studentId: student.id, 
+              phoneNumber: from, 
+              role: 'assistant', 
+              content: finalResponse 
+            });
+          }
+        } catch (innerError) {
+          console.error('Async Webhook Processing Error:', innerError);
+        }
+      })();
     } else {
-      console.log("Payload rejected: Not a 'whatsapp_business_account' object.");
-      return res.sendStatus(404);
+      res.sendStatus(404);
     }
   } catch (error) {
     console.error('CRITICAL Webhook Handler Error:', error);
-    return res.sendStatus(500);
+    if (!res.headersSent) res.sendStatus(500);
   }
 };
