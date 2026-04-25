@@ -45,11 +45,13 @@ const adminOptions = {
 };
 
 export const buildAdminRouter = async () => {
-  const AdminJSExpress = await import('@adminjs/express');
+  // Using a Function wrapper to prevent TypeScript from transpiling this to a crashing require()
+  const AdminJSExpress = await (new Function('return import("@adminjs/express")')());
+  
   const admin = new AdminJS(adminOptions);
   
-  // Handing both ESM and CJS styles of the imported module
-  const buildRouter = AdminJSExpress.default ? AdminJSExpress.default.buildRouter : (AdminJSExpress as any).buildRouter;
+  // Handling both ESM and CJS styles of the imported module
+  const buildRouter = AdminJSExpress.default ? AdminJSExpress.default.buildRouter : AdminJSExpress.buildRouter;
   
   return buildRouter(admin);
 };
