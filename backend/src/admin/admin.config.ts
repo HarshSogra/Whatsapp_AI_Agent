@@ -1,5 +1,4 @@
 import AdminJS from 'adminjs';
-import AdminJSExpress from '@adminjs/express';
 import { Database, Resource } from '@adminjs/prisma';
 import { prisma } from '../index';
 
@@ -46,6 +45,11 @@ const adminOptions = {
 };
 
 export const buildAdminRouter = async () => {
+  const AdminJSExpress = await import('@adminjs/express');
   const admin = new AdminJS(adminOptions);
-  return AdminJSExpress.buildRouter(admin);
+  
+  // Handing both ESM and CJS styles of the imported module
+  const buildRouter = AdminJSExpress.default ? AdminJSExpress.default.buildRouter : (AdminJSExpress as any).buildRouter;
+  
+  return buildRouter(admin);
 };
