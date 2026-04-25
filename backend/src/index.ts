@@ -3,15 +3,15 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './prisma';
 import webhookRoutes from './routes/webhook.routes';
 import apiRoutes from './routes/api.routes';
 import { initCronJobs } from './services/cron.service';
 
 import { buildAdminRouter } from './admin/admin.config';
 
+// Setup
 const app = express();
-export const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8000;
 
 // Middleware

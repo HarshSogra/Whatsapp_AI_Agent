@@ -1,6 +1,6 @@
 import AdminJS from 'adminjs';
 import { Database, Resource } from '@adminjs/prisma';
-import { prisma } from '../index';
+import { prisma } from '../prisma';
 
 AdminJS.registerAdapter({ Database, Resource });
 
