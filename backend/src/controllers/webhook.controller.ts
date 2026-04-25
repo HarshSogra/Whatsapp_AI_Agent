@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendWhatsAppMessage } from '../services/whatsapp.service';
 import { generateAIResponse, classifyIntentAI } from '../services/ai.service';
-import { prisma } from '../prisma';
+import { prisma } from '../index';
 
 // Helper: Detect High Intent (Keywords)
 function detectIntent(message: string): "HIGH" | "LOW" {
