@@ -1,30 +1,26 @@
 import { prisma } from '../prisma';
 
 export const buildAdminRouter = async () => {
-    console.log("Loading AdminJS modules...");
     const adminModule = await (new Function('return import("adminjs")')());
     const prismaModule = await (new Function('return import("@adminjs/prisma")')());
     const expressModule = await (new Function('return import("@adminjs/express")')());
 
-    // Resolve the actual classes
     const AdminJS = adminModule.AdminJS || adminModule.default;
     const { Database, Resource } = prismaModule;
     const AdminJSExpress = expressModule.default || expressModule;
 
-    console.log(`AdminJS Class: ${AdminJS ? 'FOUND' : 'MISSING'}`);
-    console.log(`Prisma Adapter Database: ${Database ? 'FOUND' : 'MISSING'}`);
-    console.log(`Prisma Adapter Resource: ${Resource ? 'FOUND' : 'MISSING'}`);
-
     // Register the adapter
-    if (AdminJS && Database && Resource) {
-        AdminJS.registerAdapter({ Database, Resource });
-        console.log("AdminJS Adapter Registered ✅");
-    }
+    AdminJS.registerAdapter(prismaModule);
+
+    // Test if the adapter actually recognizes our models
+    const testModel = { model: (prisma as any).institute, client: prisma };
+    const isRecognized = Resource.isResource(testModel);
+    console.log(`>>> Adapter Self-Test (Is Institute Recognized?): ${isRecognized}`);
 
     const adminOptions = {
         resources: [
             {
-                resource: { model: (prisma as any).institute, client: prisma },
+                resource: testModel,
                 options: { parent: { name: 'Institute Management', icon: 'Business' } },
             },
             {
@@ -51,10 +47,6 @@ export const buildAdminRouter = async () => {
         rootPath: '/admin',
     };
 
-    if (!AdminJS) throw new Error("AdminJS class could not be loaded.");
-
     const admin = new AdminJS(adminOptions);
-    const buildRouter = AdminJSExpress.buildRouter;
-
-    return buildRouter(admin);
+    return AdminJSExpress.buildRouter(admin);
 };
