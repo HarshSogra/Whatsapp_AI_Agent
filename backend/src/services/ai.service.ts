@@ -15,45 +15,49 @@ const getGroq = () => {
 };
 
 export const generateAIResponse = async (userMessage: string, history: any[], context: any) => {
-  const hasData = context.courses && context.courses.length > 0;
+  const teacherNames = context.faculty.map((f: any) => f.name.toLowerCase());
+  const hasFaculty = teacherNames.length > 0;
 
   const defaultSystemPrompt = `
 You are the professional WhatsApp Assistant for "${context.name}".
-Keep your replies warm, professional, and very short (1-2 sentences).
+Your goal is to be warm, professional, and honest.
 
-RULES:
-1. If you have course details below, use them. 
-2. If you don't have details (Verified Courses is empty), just say: "We're currently updating our batch schedule. May I know which course you are looking for so I can notify you?"
-3. Be helpful but don't make up specific fees or names if they aren't listed below.
+STRICT DATA RULE:
+- You ONLY have these Verified Teachers: ${hasFaculty ? context.faculty.map((f: any) => f.name).join(', ') : 'NONE'}.
+- NEVER invent or mention any other names (e.g., Rohan, Arav, Kumar). 
+- If a student asks about a teacher not on the list, say: "Currently, our verified faculty includes ${hasFaculty ? context.faculty.map((f: any) => f.name).join(', ') : 'our expert team'}. May I help you with their batch details?"
 
-Institute Details:
-Name: ${context.name}
+Course Info: ${context.courses.length > 0 ? JSON.stringify(context.courses) : "Updating soon"}
 Location: ${context.location}
-Verified Faculty: ${JSON.stringify(context.faculty)}
-Verified Courses: ${JSON.stringify(context.courses)}
   `;
 
   const systemPrompt = context.systemPrompt || defaultSystemPrompt;
 
-  const messages: any[] = [
-    { role: 'system', content: systemPrompt },
-    ...history.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    })),
-    { role: 'user', content: userMessage }
-  ];
-
   try {
     const completion = await getGroq().chat.completions.create({
       model: 'llama-3.1-8b-instant',
-      messages: messages,
-      temperature: 0.3,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...history.map(msg => ({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content })),
+        { role: 'user', content: userMessage }
+      ],
+      temperature: 0.2, // Lowered for honesty
     });
 
-    return completion.choices[0].message?.content || "";
+    let response = completion.choices[0].message?.content || "";
+
+    // SIMPLE HALLUCINATION CHECK: If AI uses a name not in our list
+    const commonHallucinations = ["rohan", "arav", "kumar", "sharma", "akash"];
+    for (const name of commonHallucinations) {
+      if (response.toLowerCase().includes(name) && !teacherNames.includes(name)) {
+        console.warn(`[SAFETY] Caught hallucinated name: ${name}`);
+        response = `Our current expert faculty includes ${context.faculty.map((f: any) => f.name).join(' and ')}. Would you like to know about their experience or batch timings?`;
+        break;
+      }
+    }
+
+    return response;
   } catch (error) {
-    console.error('Error generating AI response:', error);
     return "I'm here to help! Could you please repeat that?";
   }
 };
@@ -63,18 +67,13 @@ export const classifyIntentAI = async (message: string): Promise<boolean> => {
     const response = await getGroq().chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
-        { 
-          role: 'system', 
-          content: 'Reply YES if the user is asking about fees, joining, or demos. Otherwise reply NO.' 
-        },
+        { role: 'system', content: 'Reply YES if asking about fees, joining, or demos. Otherwise NO.' },
         { role: 'user', content: message }
       ],
       temperature: 0,
       max_tokens: 5,
     });
-
-    const result = response.choices[0].message?.content?.trim().toUpperCase();
-    return result === 'YES';
+    return response.choices[0].message?.content?.trim().toUpperCase() === 'YES';
   } catch (error) {
     return false;
   }
