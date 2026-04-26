@@ -38,7 +38,14 @@ export const initCronJobs = () => {
     console.log('Running auto follow-up job...');
     try {
       const now = new Date();
+      const istHours = (now.getUTCHours() + 5) % 24; // Simple IST conversion
       
+      // SLEEP WINDOW: Don't send follow-ups between 10 PM and 8 AM
+      if (istHours >= 22 || istHours < 8) {
+        console.log('Follow-up job skipping due to SLEEP WINDOW (Night time).');
+        return;
+      }
+
       const eligibleStudents = await prisma.student.findMany({
         where: {
           followUpCount: { lt: 2 },
