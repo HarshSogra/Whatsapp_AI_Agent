@@ -261,7 +261,10 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
           // Resolve Institute from database
           const institute = await prisma.institute.findUnique({
             where: { whatsappPhoneNumberId: phoneNumberId },
-            include: { courses: true }
+            include: { 
+              courses: true,
+              faculty: true
+            }
           });
 
           if (!institute) {
@@ -313,8 +316,9 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
           // Prepare context for AI
           const context = {
             name: institute.name,
-            location: (institute as any).location, // In case you add it to DB later
-            courses: institute.courses.map(c => ({ name: c.name, fees: c.fees })),
+            location: institute.address || "Lucknow, India", // Default if not found
+            courses: institute.courses.map(c => ({ name: c.name, fees: c.fees, duration: c.duration })),
+            faculty: institute.faculty.map(f => ({ name: f.name, subject: f.subject, exp: f.experience })),
             systemPrompt: institute.aiSystemPrompt
           };
 

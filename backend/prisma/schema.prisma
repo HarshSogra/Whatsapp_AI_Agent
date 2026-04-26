@@ -18,9 +18,11 @@ model Institute {
   whatsappDisplayNumber String?
   adminPhoneNumber      String?
   contactPhoneNumber    String?   // The direct phone number for student calls/enquiries
+  address               String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   courses               Course[]
+  faculty               Faculty[]
   students              Student[]
   users                 User[]
 
@@ -92,4 +94,15 @@ model DemoBooking {
   createdAt   DateTime @default(now())
   course      Course   @relation(fields: [courseId], references: [id])
   student     Student  @relation(fields: [studentId], references: [id])
+}
+model Faculty {
+  id            String    @id @default(uuid())
+  instituteId   String
+  name          String
+  subject       String
+  experience    String?
+  qualification String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  institute     Institute @relation(fields: [instituteId], references: [id])
 }
