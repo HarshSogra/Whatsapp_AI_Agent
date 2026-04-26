@@ -229,15 +229,15 @@ async function handleClosingFlow(student: any, message: string, institute: any) 
 }
 
 // Helper: Send Alert to Admin
-async function sendAdminAlert(params: { adminPhoneNumber: string, studentPhone: string, message: string, title?: string }) {
-  const { adminPhoneNumber, studentPhone, message, title } = params;
+async function sendAdminAlert(params: { adminPhoneNumber: string, studentPhone: string, message: string, title?: string, token?: string, phoneId?: string }) {
+  const { adminPhoneNumber, studentPhone, message, title, token, phoneId } = params;
   const displayTitle = title || "🚀 *New Student Enquiry (High Intent)*";
   
   const alertText = `${displayTitle}\n\n*Phone:* +${studentPhone}\n*Message:* ${message}\n*Time:* ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
 
   try {
     console.log(`Sending Admin Alert to ${adminPhoneNumber}...`);
-    await sendWhatsAppMessage(adminPhoneNumber, alertText);
+    await sendWhatsAppMessage({ to: adminPhoneNumber, message: alertText, token, phoneId });
   } catch (error) {
     console.error("Admin Alert Delivery Failed:", error);
   }
@@ -323,7 +323,9 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
               adminPhoneNumber: institute.adminPhoneNumber,
               studentPhone: from,
               message: msg_body,
-              title: closingAlertTitle
+              title: closingAlertTitle,
+              token: institute.whatsappAccessToken || undefined,
+              phoneId: phoneNumberId
             });
           }
 
@@ -355,7 +357,12 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
 
           // 3. Sending the WhatsApp Reply
           if (finalResponse) {
-            await sendWhatsAppMessage(from, finalResponse);
+            await sendWhatsAppMessage({ 
+              to: from, 
+              message: finalResponse,
+              token: institute.whatsappAccessToken || undefined,
+              phoneId: phoneNumberId
+            });
             await saveMessage({ 
               studentId: student.id, 
               phoneNumber: from, 

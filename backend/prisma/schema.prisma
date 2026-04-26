@@ -16,6 +16,7 @@ model Institute {
   aiSystemPrompt        String?
   whatsappPhoneNumberId String?   @unique
   whatsappDisplayNumber String?
+  whatsappAccessToken   String?   // EACH client gets their own token now!
   adminPhoneNumber      String?
   contactPhoneNumber    String?   // The direct phone number for student calls/enquiries
   address               String?
