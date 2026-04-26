@@ -16,31 +16,33 @@ const getGroq = () => {
 
 export const generateAIResponse = async (userMessage: string, history: any[], context: any) => {
   const defaultSystemPrompt = `
+You are the professional WhatsApp Assistant for "${context.name}".
+Your role is to help students with course details, fees, and booking demo classes.
+
 STRICT RULES:
-1. Always reply in ONE single consolidated message.
-2. CONTEXT WALL: You are ONLY allowed to use information provided in the "Institute Details" below. Do NOT use general knowledge about coaching, fees, or education.
-3. SAFE FALLBACK: If information is missing (e.g., fee for a course not listed), say: "I don't have the specific details for that right now. I'll have our team provide that to you shortly." NEVER guess.
-4. ENTITY LOCKING: No human names, staff roles, or contact actions (e.g., "Rahul sir", "Counselor").
-5. LOCATION LOCKING: No city/state mentions unless explicitly provided.
-6. NO INVENTING: Do NOT create URLs, social media handles, or email addresses.
-7. ACTION BAN: NEVER describe future actions (e.g., "will call", "will message").
-8. CONCISE OUTPUT ONLY: Keep replies short (1–3 lines). Avoid long explanations.
-9. NO FAKE GUARANTEES: Never promise results, scores, or admission.
-10. USER EXPERIENCE FIRST: Be professional and calm. Only ask ONE question at a time.
+1. CONTEXT WALL: You are ONLY allowed to use information provided in the "Institute Details" below. Do NOT use general knowledge.
+2. SAFE FALLBACK: If information is missing (e.g., fee for a course not listed), say: "I don't have the specific details for that right now. I'll have our team provide that to you shortly."
+3. ENTITY LOCKING: Only mention the teachers listed in "Verified Faculty" below. If the list is empty, do NOT mention any names or guides.
+4. LOCATION LOCKING: Mention the location only as provided in "Location" below.
+5. NO INVENTING: Do NOT create fake URLs, phone numbers, or social media handles.
+6. ACTION BAN: NEVER describe future human actions (e.g., "Rahul sir will call you").
+7. CONCISE & WARM: Keep replies friendly, professional, and short (1–4 sentences).
+8. NO FAKE GUARANTEES: Never promise 100% results or guaranteed admission.
+9. ONE FOLLOW-UP: Ask only ONE clear follow-up question at a time to guide the student.
 
 RESPONSE FORMAT:
-[Short Answer: 1-3 lines]
-[One Clear Question - If needed]
+[Short, Warm Answer]
+[One Clear Follow-up Question]
 
 Institute Details:
 Name: ${context.name}
-Location: ${context.location || "Not Provided"}
-Courses: ${JSON.stringify(context.courses)}
+Location: ${context.location}
+Verified Faculty: ${JSON.stringify(context.faculty)}
+Verified Courses: ${JSON.stringify(context.courses)}
   `;
 
   const systemPrompt = context.systemPrompt || defaultSystemPrompt;
 
-  // Format history and current message for chat API
   const messages: any[] = [
     { role: 'system', content: systemPrompt },
     ...history.map(msg => ({
@@ -59,16 +61,22 @@ Courses: ${JSON.stringify(context.courses)}
 
     let response = completion.choices[0].message?.content || "";
 
-    // OUTPUT GUARD: Safety Net for Banned Patterns
+    // OUTPUT GUARD: Safety Net for Banned Hallucinations
     const bannedPatterns = [
-
-      /life/i
+      /rahul sir/i,
+      /neha ma'am/i,
+      /kumar/i,
+      /sharma/i,
+      /gupta/i,
+      /counselor will/i,
+      /staff will/i,
+      /guaranteed admission/i
     ];
 
     for (const pattern of bannedPatterns) {
       if (pattern.test(response)) {
-        console.warn(`[SAFETY] Banned pattern detected: ${pattern}. Replacing with fallback.`);
-        response = "I can help you with course details or demo class timing. Please tell me your preference.";
+        console.warn(`[SAFETY] AI Hallucination detected: ${pattern}. Replacing with fallback.`);
+        response = "I have noted your preference for the demo class. I'll have our team confirm the details with you shortly. Would you like to know anything about our fees or courses in the meantime?";
         break;
       }
     }
@@ -80,18 +88,14 @@ Courses: ${JSON.stringify(context.courses)}
   }
 };
 
-/**
- * Classifies if a message shows high intent to enroll or inquire about courses.
- * Simple YES/NO classification to keep it fast.
- */
 export const classifyIntentAI = async (message: string): Promise<boolean> => {
   try {
     const response = await getGroq().chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
-        {
-          role: 'system',
-          content: 'Classify if the student message shows high intent (e.g., asking about joining, fees, demos, or center visits). Reply with ONLY "YES" or "NO".'
+        { 
+          role: 'system', 
+          content: 'Classify if the student message shows high intent (e.g., asking about joining, fees, demos, or center visits). Reply with ONLY "YES" or "NO".' 
         },
         { role: 'user', content: message }
       ],
@@ -103,6 +107,6 @@ export const classifyIntentAI = async (message: string): Promise<boolean> => {
     return result === 'YES';
   } catch (error) {
     console.error('Error in classifyIntentAI:', error);
-    return false; // Default to false to avoid spamming admin on error
+    return false;
   }
 };
