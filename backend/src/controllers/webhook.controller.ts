@@ -199,6 +199,30 @@ async function handleClosingFlow(student: any, message: string, institute: any) 
       where: { id: student.id },
       data: { leadStatus }
     });
+
+    // AUTO-BOOKING: If student mentioned a time, try to record it
+    const timeKeywords = ["pm", "am", "clock", "tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const hasTime = timeKeywords.some(k => msg.includes(k));
+    
+    if (hasTime && intent === "DEMO") {
+      try {
+        // Try to find the first course to link the booking
+        const firstCourse = await prisma.course.findFirst({ where: { instituteId: student.instituteId } });
+        if (firstCourse) {
+          await prisma.demoBooking.create({
+            data: {
+              studentId: student.id,
+              courseId: firstCourse.id,
+              scheduledAt: new Date(), // We store now as a placeholder, admin can see text in logs
+              status: "PENDING_CONFIRMATION"
+            }
+          });
+          console.log("Demo Booking Logged ✅");
+        }
+      } catch (err) {
+        console.error("Booking failed:", err);
+      }
+    }
   }
 
   return { response, alertTitle };
