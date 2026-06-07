@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { MessageSquare, Users, BookOpen, Settings, LayoutDashboard, LogOut } from 'lucide-react';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 const DashboardHome = () => (
   <div className="space-y-6">
@@ -89,18 +90,35 @@ const Sidebar = () => (
   </div>
 );
 
+const AppContent = () => {
+  const location = useLocation();
+  const isPrivacyPage = location.pathname === '/privacy';
+
+  if (isPrivacyPage) {
+    return (
+      <Routes>
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50/50 font-sans selection:bg-indigo-100">
+      <Sidebar />
+      <main className="flex-1 p-12 max-w-7xl">
+        <Routes>
+          <Route path="/" element={<DashboardHome />} />
+          <Route path="/crm" element={<CRM />} />
+        </Routes>
+      </main>
+    </div>
+  );
+};
+
 const App = () => {
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-gray-50/50 font-sans selection:bg-indigo-100">
-        <Sidebar />
-        <main className="flex-1 p-12 max-w-7xl">
-          <Routes>
-            <Route path="/" element={<DashboardHome />} />
-            <Route path="/crm" element={<CRM />} />
-          </Routes>
-        </main>
-      </div>
+      <AppContent />
     </BrowserRouter>
   );
 };

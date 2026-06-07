@@ -38,10 +38,10 @@ A sleek interface for Institute Admins to:
 ## 🏗️ Architecture & Stack
 
 - **Backend**: Node.js (Express + TypeScript)
-- **Database**: PostgreSQL (Prisma ORM)
+- **Database**: PostgreSQL (Prisma ORM with Supabase)
 - **AI Engine**: Groq SDK (Llama 3.1 8B Instant)
 - **WhatsApp Engine**: Meta WhatsApp Cloud API
-- **Frontend**: React (Vite) + TailwindCSS + Lucide Icons
+- **Frontend**: React (Vite) + TailwindCSS + Lucide Icons (Deployed on Vercel)
 - **Schedulers**: Node-cron for automated follow-ups
 
 ---
@@ -60,6 +60,8 @@ A sleek interface for Institute Admins to:
    npx prisma db push
    npm run dev
    ```
+   *(Note: For testing WhatsApp Webhook verification locally, you can use the dedicated webhook server: `node server.js`)*
+
 2. **Frontend**:
    ```bash
    cd frontend
@@ -78,14 +80,18 @@ Ensure the following are set in `backend/.env`:
 
 ## 📦 Deployment
 
-### Backend (Render/Railway)
+### Backend (Render/Railway/Supabase)
 - Enable `/backend` as a Web Service.
+- Ensure your `DATABASE_URL` is pointing to your Supabase PostgreSQL instance.
 - Build: `npm install && npx prisma generate && npm run build`
 - Start: `npm start`
 
-### Frontend (Static Hosting)
-- Build: `npm run build`
-- Output: `dist`
+### Frontend (Vercel)
+- The frontend is optimized for deployment on Vercel.
+- **Production URL**: [eduflowai.com](https://eduflowai.com)
+- **Public Routes**: Includes standalone public pages such as the [Privacy Policy](https://eduflowai.com/privacy).
+- Build command: `npm run build`
+- Output directory: `dist`
 
 ---
 

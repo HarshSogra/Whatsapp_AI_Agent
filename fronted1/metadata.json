@@ -1,0 +1,6 @@
+{
+  "name": "EduAgent AI",
+  "description": "The AI-powered WhatsApp automation platform for coaching institutes. Capture, qualify, and convert leads 24/7 with the intelligence of Llama 3.1.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
