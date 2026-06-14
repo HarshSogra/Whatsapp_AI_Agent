@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "motion/react";
 
 interface NavbarProps {
   onGetStartedClick: () => void;
+  onLoginClick: () => void;
 }
 
-export default function Navbar({ onGetStartedClick }: NavbarProps) {
+export default function Navbar({ onGetStartedClick, onLoginClick }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -84,7 +85,7 @@ export default function Navbar({ onGetStartedClick }: NavbarProps) {
           {/* Nav Buttons */}
           <div className="hidden md:flex items-center gap-4">
             <button
-              onClick={onGetStartedClick}
+              onClick={onLoginClick}
               className="font-sans text-sm text-white/70 hover:text-white transition-colors px-4 py-2 hover:bg-white/5 rounded-full transition-all active:scale-95 cursor-pointer"
             >
               Log In
@@ -154,7 +155,7 @@ export default function Navbar({ onGetStartedClick }: NavbarProps) {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  onGetStartedClick();
+                  onLoginClick();
                 }}
                 className="w-full text-center py-2.5 rounded-xl border border-white/10 text-white font-medium hover:bg-white/5 transition-all"
               >

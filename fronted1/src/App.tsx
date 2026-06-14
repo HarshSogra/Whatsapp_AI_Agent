@@ -9,36 +9,69 @@ import ROICalculator from "./components/ROICalculator";
 import ApiConsole from "./components/ApiConsole";
 import FaqSection from "./components/FaqSection";
 import Footer from "./components/Footer";
-import { X, Sparkles, Bot, GraduationCap, CheckCircle2 } from "lucide-react";
+import Dashboard from "./components/Dashboard";
+import { login, AuthUser } from "./api";
+import { AlertCircle, GraduationCap, Lock, Mail, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
   const [nicheInquiry, setNicheInquiry] = useState<{ inquiry: string; response: string } | null>(null);
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [signupForm, setSignupForm] = useState({ name: "", email: "", schoolName: "" });
-  const [signupComplete, setSignupComplete] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [token, setToken] = useState(() => localStorage.getItem("eduagent_token") || "");
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const savedUser = localStorage.getItem("eduagent_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   const handleNicheSelect = (config: { inquiry: string; response: string }) => {
     setNicheInquiry(config);
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSignupComplete(true);
-    setTimeout(() => {
-      // Auto close and reset after 3 seconds
-      setShowSignupModal(false);
-      setSignupComplete(false);
-      setSignupForm({ name: "", email: "", schoolName: "" });
-    }, 4500);
+  const openLogin = () => {
+    setLoginError("");
+    setShowLoginModal(true);
   };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError("");
+    try {
+      const response = await login(loginForm.email, loginForm.password);
+      localStorage.setItem("eduagent_token", response.token);
+      localStorage.setItem("eduagent_user", JSON.stringify(response.user));
+      setToken(response.token);
+      setUser(response.user);
+      setShowLoginModal(false);
+      setLoginForm({ email: "", password: "" });
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("eduagent_token");
+    localStorage.removeItem("eduagent_user");
+    setToken("");
+    setUser(null);
+    setLoginForm({ email: "", password: "" });
+  };
+
+  if (token && user) {
+    return <Dashboard token={token} user={user} onLogout={handleLogout} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] text-[#E5E5E5] relative antialiased">
-      <Navbar onGetStartedClick={() => setShowSignupModal(true)} />
+      <Navbar onGetStartedClick={openLogin} onLoginClick={openLogin} />
       
       <main className="relative z-10">
-        <Hero onGetStartedClick={() => setShowSignupModal(true)} />
+        <Hero onGetStartedClick={openLogin} />
         
         {/* Solutions section */}
         <NicheShowcase onNicheSelect={handleNicheSelect} />
@@ -65,16 +98,16 @@ export default function App() {
       {/* Footer layout */}
       <Footer />
 
-      {/* Simulated Sign Up Form Modal */}
+      {/* Admin Login Modal */}
       <AnimatePresence>
-        {showSignupModal && (
+        {showLoginModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowSignupModal(false)}
+              onClick={() => setShowLoginModal(false)}
               className="absolute inset-0 bg-black/90 backdrop-blur-md"
             />
 
@@ -86,109 +119,77 @@ export default function App() {
               className="w-full max-w-md glass-premium rounded-[2.5rem] border border-white/20 shadow-2xl relative z-10 p-8 sm:p-10 text-center"
             >
               <button 
-                onClick={() => setShowSignupModal(false)}
+                onClick={() => setShowLoginModal(false)}
                 className="absolute top-6 right-6 w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              {!signupComplete ? (
-                /* Main Form View */
-                <form onSubmit={handleSignupSubmit} className="space-y-6">
-                  {/* Icon header */}
-                  <div className="mx-auto w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/15">
-                    <GraduationCap className="w-6 h-6 text-white" />
+              <form onSubmit={handleLoginSubmit} className="space-y-6">
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/15">
+                  <GraduationCap className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-heading text-xl sm:text-2xl font-bold text-white leading-tight">Admin Login</h3>
+                  <p className="text-xs text-white/55 font-sans">Use your backend admin account to open the live CRM dashboard.</p>
+                </div>
+
+                {loginError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-left text-xs text-red-200">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{loginError}</span>
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <h3 className="font-heading text-xl sm:text-2xl font-bold text-white leading-tight">Scale Your Coaching Brand</h3>
-                    <p className="text-xs text-white/55 font-sans">Deploy automated qualification funnels straight to your admissions office.</p>
-                  </div>
-
-                  {/* Input Fields */}
-                  <div className="space-y-3.5 text-left font-sans">
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase text-white/55 tracking-wider mb-1.5 pl-1">
-                        Full Name
-                      </label>
-                      <input
-                        required
-                        type="text"
-                        value={signupForm.name}
-                        onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
-                        placeholder="e.g. Anand Kumar"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/35 transition-all placeholder:text-white/30"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase text-white/55 tracking-wider mb-1.5 pl-1">
-                        Business Email
-                      </label>
+                <div className="space-y-3.5 text-left font-sans">
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-white/55 tracking-wider mb-1.5 pl-1">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
                       <input
                         required
                         type="email"
-                        value={signupForm.email}
-                        onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-                        placeholder="anand@super30.com"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/35 transition-all placeholder:text-white/30"
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                        placeholder="admin@institute.com"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-white/35 transition-all placeholder:text-white/30"
                       />
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-[11px] font-mono uppercase text-white/55 tracking-wider mb-1.5 pl-1">
-                        Institute / Brand Name
-                      </label>
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-white/55 tracking-wider mb-1.5 pl-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
                       <input
                         required
-                        type="text"
-                        value={signupForm.schoolName}
-                        onChange={(e) => setSignupForm({ ...signupForm, schoolName: e.target.value })}
-                        placeholder="e.g. Super 35 Academy"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/35 transition-all placeholder:text-white/30"
+                        type="password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                        placeholder="Enter password"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-white/35 transition-all placeholder:text-white/30"
                       />
                     </div>
                   </div>
+                </div>
 
-                  {/* Submit buttons */}
-                  <button
-                    type="submit"
-                    className="w-full py-3.5 bg-white text-black font-heading font-black text-xs uppercase tracking-wider rounded-xl hover:scale-101 active:scale-99 hover:bg-neutral-150 transition-all cursor-pointer shadow-lg"
-                  >
-                    Initiate Free Trail
-                  </button>
-
-                  <p className="text-[10px] text-white/40 leading-none">
-                    Requires no credit cards. Fully compliant with Meta guidelines.
-                  </p>
-                </form>
-              ) : (
-                /* Form Success Checked View */
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-6 py-6"
+                <button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full py-3.5 bg-white text-black font-heading font-black text-xs uppercase tracking-wider rounded-xl hover:scale-101 active:scale-99 hover:bg-neutral-150 transition-all cursor-pointer shadow-lg disabled:opacity-60 disabled:cursor-wait"
                 >
-                  <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
-                    <CheckCircle2 className="w-10 h-10 text-green-400 animate-pulse" />
-                  </div>
+                  {isLoggingIn ? "Connecting..." : "Open Dashboard"}
+                </button>
 
-                  <div className="space-y-2">
-                    <h4 className="font-heading text-xl font-bold text-white">EduAgent Node Provisioned!</h4>
-                    <p className="text-xs text-white/60 font-sans max-w-sm mx-auto leading-relaxed">
-                      Thanks <b className="text-white">{signupForm.name}</b>. We have successfully registered <b className="text-white">{signupForm.schoolName}</b> into the evaluation tier!
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl max-w-xs mx-auto text-[11px] text-white/55 font-mono leading-relaxed">
-                    [INFO] A verification invite with sandbox steps is being dispatched to <b className="text-white">{signupForm.email}</b>. Live setup complete in 45s.
-                  </div>
-
-                  <div className="text-xs font-mono text-green-400">
-                    Deploying Llama 3.1 agents...
-                  </div>
-                </motion.div>
-              )}
+                <p className="text-[10px] text-white/40 leading-relaxed">
+                  Requires a user row in the backend database. New signup is not available until the backend adds a registration API.
+                </p>
+              </form>
             </motion.div>
           </div>
         )}
